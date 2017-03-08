@@ -1,0 +1,130 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+void readArray(int * * retarr, int * nels, char * filename) {
+	
+	FILE * fptr = fopen(filename, "r");
+	if (fptr == NULL) {
+		fprintf(stderr, "fopen fail\n");
+		return;
+	}
+	int rtv; // return value
+	// go to the end of the file
+	rtv = fseek(fptr, 0, SEEK_END);
+	if (rtv == -1) {
+		fprintf(stderr, "fseek fail\n");
+		fclose(fptr);
+		return;
+	}
+	long floc = ftell(fptr);
+	// calculate the number of elements in the file
+	int numelem = (int) floc / sizeof(int);
+
+	// allocate memory
+	int * arr = malloc(sizeof(* arr) * numelem);
+	if (arr == NULL) {
+		fprintf(stderr, "malloc arr fail\n");
+		fclose(fptr);
+		return;
+	}
+
+	// return to the beginning of the file
+	// do not use rewind because rewind does not report failure
+	rtv = fseek(fptr, 0, SEEK_SET);
+	if (rtv == -1) {
+		fprintf(stderr, "fseek fail\n");
+		fclose(fptr);
+		free (arr);
+		return;
+	}
+	// read the array's values
+	rtv = fread(arr, sizeof(* arr), numelem, fptr);
+	if (rtv != numelem) {
+		fprintf(stderr, "fread fail\n");
+		fclose(fptr);
+		free (arr);
+		return;
+	}
+	fclose (fptr);
+
+	//return array and number of elements
+	* retarr = arr;
+	* nels = numelem;
+}
+
+void printArray(int * arr, int nels) {
+	for (int i = 0; i < nels; i++) {
+		fprintf(stdout, "%d\n", arr[i]);
+	}
+	fprintf(stdout, "\n");
+}
+
+void swap (int * a, int * b) {
+	int temp = * a;
+	* a = * b;
+	* b = temp;
+}
+
+int partition(int * arr, int nels) {
+	//1. Pick a pivot -- we'll always pick location 0
+	int pivot = 0;
+	//1a. Track the second cursor. It always starts at the end of the array
+	int p2 = nels - 1;
+	
+	//2. As long as pivot and p2 don't meet:
+	while (pivot != p2) {
+		//Check the entry in front of pivot:
+		int nextval = arr[pivot + 1];
+		if (nextval <= arr[pivot]) {
+			//If nextval is less than pivot swap it, move the pivot forward:
+			swap(&arr[pivot], &arr[pivot + 1]);
+			pivot++;
+		} else {
+			//Else swap it with p2, move p2 "backwards"
+			swap(&arr[pivot + 1], &arr[p2]);
+			p2--;
+		}
+	}
+	
+	//3. Return location where the pivot winds up
+	return pivot;
+}
+
+void quicksort(int * arr, int nels) {
+	//Base cases: if nels = 0 or 1, array already sorted
+	if (nels <= 1) return;
+	
+	//1. partition the array:
+	//[arr 1 : pivot : arr 2]
+	int pivot = partition(arr, nels); //pivot is the index of the pivot
+	
+	//2a. call quicksort on the part of the array before pivot
+	quicksort(&arr[0], pivot);
+	//2b. call quicksort on the part of the array after pivot
+	quicksort(&arr[pivot + 1], nels - pivot - 1);
+	
+	//3. Return sorted array -- we're already done!
+	return;
+}
+
+int main(int argc, char ** argv) {
+	if (argc < 2) {
+		fprintf(stderr, "Wrong number of command line arguments!\n");
+		fprintf(stderr, "Usage: ./quicksort <input file>");
+		exit(1);
+	}
+
+	int * arr = NULL;
+	int nels = 0;
+	readArray(&arr, &nels, argv[1]);
+	
+	//Print array:
+	fprintf(stdout, "Original array:\n");
+	printArray(arr, nels);
+	
+	quicksort(arr, nels);
+	
+	//Print array:
+	fprintf(stdout, "Sorted array:\n");
+	printArray(arr, nels);
+}
